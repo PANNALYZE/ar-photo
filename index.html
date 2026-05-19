@@ -17,20 +17,18 @@
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
 
-    <a-assets>
-      <img id="kirika" src="./kirika.png" crossorigin="anonymous">
-    </a-assets>
-
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
     <a-entity mindar-image-target="targetIndex: 0">
-      <a-image
-        src="#kirika"
-        position="0 0.55 0"
-        width="0.7"
-        height="1.0"
-        material="transparent: true; alphaTest: 0.5">
-      </a-image>
+      <a-entity
+        sprite-anim="src: ./output/hatch-pet/kirika/final/spritesheet.webp; columns: 8; rows: 9; row: 0; frames: 6; fps: 8; planeWidth: 1.2; planeHeight: 1.3"
+        kirika-behavior="moveSpeed: 0.3; moveRange: 0.6"
+        position="0 0.7 0">
+      </a-entity>
+      <a-entity
+        banner="text: 2026.5.22 渋谷オリエンテーリング|GOALおめでとう！！; bgColor: #fff8e1; textColor: #d84315; borderColor: #ff7043; planeWidth: 1.9; planeHeight: 0.6; canvasWidth: 1200; canvasHeight: 400"
+        position="0 1.7 0">
+      </a-entity>
     </a-entity>
   </a-scene>
 
@@ -62,5 +60,7 @@
   </div>
 
   <script src="js/app.js"></script>
+  <script src="js/banner.js"></script>
+  <script src="js/kirika-behavior.js"></script>
 </body>
 </html>
