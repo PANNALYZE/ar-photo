@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>マーカー用QRコード生成ツール</title>
+  <script src="./qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, "Yu Gothic", "Hiragino Sans", sans-serif;
+      padding: 24px;
+      max-width: 720px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+    h1 { font-size: 20px; }
+    .info {
+      background: #fff8e1;
+      border: 1px solid #ffd180;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+    label {
+      display: block;
+      margin-top: 16px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+      margin-top: 4px;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+    }
+    .row > * { flex: 1; }
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #ff7043;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #f4511e; }
+    #qr-output {
+      margin-top: 24px;
+      text-align: center;
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+    }
+    #qr-output canvas, #qr-output img {
+      max-width: 100%;
+      border: 1px solid #ddd;
+    }
+    .download-btn {
+      margin-top: 12px;
+      background: #4caf50;
+    }
+    .download-btn:hover { background: #388e3c; }
+    .preset-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .preset-btns button {
+      padding: 6px 12px;
+      font-size: 12px;
+      background: #607d8b;
+      margin: 0;
+    }
+    #status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #d84315;
+    }
+  </style>
+</head>
+<body>
+  <h1>マーカー用QRコード生成ツール</h1>
+
+  <div class="info">
+    📌 ここで生成したQRをマーカーとして使う流れ:<br>
+    1. テキストを入力 → 生成<br>
+    2. PNG画像をダウンロード<br>
+    3. <a href="https://hiukim.github.io/mind-ar-js-doc/tools/compile" target="_blank">MindARコンパイラ</a> にアップロード → targets.mind を生成<br>
+    4. プロジェクトのtargets.mindと差し替え<br>
+    5. 印刷したQRをカメラに向けるとARが浮かぶ
+  </div>
+
+  <label>QRに埋め込むテキスト（URLでなくてもOK）:</label>
+  <input id="text-input" type="text" value="KIRIKA-AR-MARKER-SHIBUYA-2026">
+
+  <div class="preset-btns">
+    <button data-preset="ar-photo-url">配布URL用</button>
+    <button data-preset="marker-only">マーカー専用文字列</button>
+    <button data-preset="event-text">イベント名</button>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>誤り訂正レベル(高いほど特徴点が多い):</label>
+      <select id="ec-level">
+        <option value="L">L (Low)</option>
+        <option value="M">M (Medium)</option>
+        <option value="Q">Q (Quartile)</option>
+        <option value="H" selected>H (High) ← 推奨</option>
+      </select>
+    </div>
+    <div>
+      <label>サイズ(px):</label>
+      <select id="size">
+        <option value="512">512</option>
+        <option value="1024" selected>1024 ← 推奨</option>
+        <option value="2048">2048</option>
+      </select>
+    </div>
+  </div>
+
+  <button id="generate-btn">QRコードを生成</button>
+  <div id="status"></div>
+
+  <div id="qr-output" style="display: none;">
+    <div id="qr-container"></div>
+    <div>
+      <button class="download-btn" id="download-btn">PNGをダウンロード</button>
+    </div>
+    <p style="font-size: 12px; color: #666;">
+      ※ 印刷時は白い余白を四方に十分とってください
+    </p>
+  </div>
+
+  <script>
+    var textInput = document.getElementById("text-input");
+    var ecLevel = document.getElementById("ec-level");
+    var sizeSel = document.getElementById("size");
+    var qrContainer = document.getElementById("qr-container");
+    var output = document.getElementById("qr-output");
+    var status = document.getElementById("status");
+    var genBtn = document.getElementById("generate-btn");
+    var dlBtn = document.getElementById("download-btn");
+
+    var presets = {
+      "ar-photo-url": "https://pannalyze.github.io/ar-photo/",
+      "marker-only": "MARKER-KIRIKA-" + Math.random().toString(36).slice(2, 12).toUpperCase(),
+      "event-text": "2026.5.22 SHIBUYA-ORIENTEERING-GOAL",
+    };
+
+    document.querySelectorAll(".preset-btns button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        textInput.value = presets[b.dataset.preset];
+      });
+    });
+
+    function generate() {
+      if (typeof QRCode === "undefined") {
+        status.textContent = "❌ QRCodeライブラリが読み込まれていません(qrcode.min.jsを確認してください)";
+        return;
+      }
+      var text = textInput.value.trim();
+      if (!text) {
+        status.textContent = "❌ テキストを入力してください";
+        return;
+      }
+      var size = parseInt(sizeSel.value, 10);
+      var levelMap = {
+        L: QRCode.CorrectLevel.L,
+        M: QRCode.CorrectLevel.M,
+        Q: QRCode.CorrectLevel.Q,
+        H: QRCode.CorrectLevel.H,
+      };
+
+      qrContainer.innerHTML = ""; // 前回の結果をクリア
+      try {
+        new QRCode(qrContainer, {
+          text: text,
+          width: size,
+          height: size,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: levelMap[ecLevel.value],
+        });
+        output.style.display = "block";
+        status.textContent = "✅ 生成しました";
+      } catch (e) {
+        status.textContent = "❌ 生成失敗: " + e.message;
+        console.error(e);
+      }
+    }
+
+    function download() {
+      // QRCodeライブラリは canvas + img の両方を作る
+      var canvas = qrContainer.querySelector("canvas");
+      if (!canvas) {
+        status.textContent = "❌ Canvasが見つかりません";
+        return;
+      }
+      canvas.toBlob(function (blob) {
+        if (!blob) {
+          status.textContent = "❌ ダウンロード失敗";
+          return;
+        }
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "ar-marker-qr.png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        status.textContent = "✅ ダウンロードしました";
+      }, "image/png");
+    }
+
+    genBtn.addEventListener("click", generate);
+    dlBtn.addEventListener("click", download);
+
+    // 初期表示
+    window.addEventListener("load", function () {
+      if (typeof QRCode === "undefined") {
+        status.textContent = "❌ qrcode.min.js が読み込めていません。tools/ にファイルがあるか確認してください。";
+      } else {
+        generate();
+      }
+    });
+  </script>
+</body>
+</html>
