@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#5865f2">
+  <title>背景透過スタンプメーカー</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>背景透過スタンプメーカー</h1>
+    <p class="lead">画像の背景を消して、Discordのスタンプ・絵文字用PNGを作ります。画像はスマホの中だけで処理され、どこにも送信されません。</p>
+  </header>
+
+  <main>
+    <!-- STEP 1 -->
+    <section class="card" id="step-upload">
+      <h2><span class="num">1</span>画像を選ぶ</h2>
+      <label class="file-btn">
+        <input type="file" id="file-input" accept="image/*">
+        <span>画像を選択 / 撮影</span>
+      </label>
+      <p class="hint">PNG・JPEG・WebPなど。大きい画像は自動で縮小して処理します。</p>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="card" id="step-edit" hidden>
+      <h2><span class="num">2</span>背景を消す</h2>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="ai" role="tab">AIで自動</button>
+        <button class="tab" data-tab="color" role="tab">色で消す</button>
+        <button class="tab" data-tab="brush" role="tab">手直し</button>
+      </div>
+
+      <div class="panel" data-panel="ai">
+        <p class="hint">人物・キャラ・物などを自動で切り抜きます。初回だけAIモデルのダウンロード（Wi-Fi推奨）があります。</p>
+        <p class="hint tip">💡 キャラだけ切り抜きたいときは、先に画像の上を指でなぞって<b>キャラを四角く囲んで</b>からボタンを押してね。囲んだ範囲だけをAIが処理するので精度が上がります。</p>
+        <div class="row">
+          <label class="inline">画質
+            <select id="ai-model">
+              <option value="isnet_quint8">標準（約40MB・速い）</option>
+              <option value="isnet_fp16">高画質（約80MB）</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <button class="primary grow" id="ai-run">AIで背景を消す</button>
+          <button id="clear-rect" hidden>範囲を解除</button>
+        </div>
+        <div class="progress" id="ai-progress" hidden>
+          <div class="bar"><div class="fill" id="ai-progress-fill"></div></div>
+          <p id="ai-progress-text">準備中…</p>
+        </div>
+      </div>
+
+      <div class="panel" data-panel="color" hidden>
+        <p class="hint">消したい背景の色を画像上でタップ。単色背景のイラストやスクショ向けです。</p>
+        <label>許容範囲 <output id="tol-val">40</output>
+          <input type="range" id="tol" min="1" max="150" value="40">
+        </label>
+        <label class="check"><input type="checkbox" id="contiguous" checked> つながっている部分だけ消す</label>
+        <button id="auto-edge">四隅の色で自動で消す</button>
+      </div>
+
+      <div class="panel" data-panel="brush" hidden>
+        <p class="hint" id="brush-hint">指でなぞって消す／戻す。2本指でズーム・移動できます。</p>
+        <div class="seg">
+          <button class="seg-btn active" data-brush="erase">消しゴム</button>
+          <button class="seg-btn" data-brush="restore">復元ブラシ</button>
+          <button class="seg-btn" data-brush="lasso">囲んで残す</button>
+        </div>
+        <label id="brush-size-label">ブラシの太さ <output id="brush-val">30</output>
+          <input type="range" id="brush-size" min="4" max="150" value="30">
+        </label>
+      </div>
+
+      <div class="viewer-tools">
+        <div class="seg small" id="bg-switch">
+          <button class="seg-btn active" data-bg="checker" title="透明">▦</button>
+          <button class="seg-btn" data-bg="dark" title="Discordダーク">暗</button>
+          <button class="seg-btn" data-bg="light" title="Discordライト">明</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="icon" id="undo" disabled>↶ 元に戻す</button>
+        <button class="icon" id="reset-view">全体表示</button>
+      </div>
+
+      <div class="viewer bg-checker" id="viewer">
+        <div class="stage" id="stage">
+          <canvas id="canvas"></canvas>
+          <canvas id="overlay"></canvas>
+        </div>
+        <div class="brush-cursor" id="brush-cursor" hidden></div>
+      </div>
+
+      <div class="row wrap">
+        <button id="reset-mask">最初からやり直す</button>
+        <button id="invert-mask">消した部分を反転</button>
+      </div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="card" id="step-export" hidden>
+      <h2><span class="num">3</span>PNGで保存</h2>
+
+      <div class="seg" id="preset">
+        <button class="seg-btn active" data-preset="sticker">スタンプ<br><small>320×320</small></button>
+        <button class="seg-btn" data-preset="emoji">絵文字<br><small>128×128</small></button>
+        <button class="seg-btn" data-preset="original">元サイズ<br><small>余白カット</small></button>
+      </div>
+
+      <label>まわりの余白 <output id="margin-val">4</output>%
+        <input type="range" id="margin" min="0" max="25" value="4">
+      </label>
+      <label class="check"><input type="checkbox" id="outline-on"> フチ取りをつける</label>
+      <div class="row" id="outline-opts" hidden>
+        <label class="inline">色 <input type="color" id="outline-color" value="#ffffff"></label>
+        <label class="grow">太さ <output id="outline-val">6</output>
+          <input type="range" id="outline-width" min="1" max="20" value="6">
+        </label>
+      </div>
+
+      <div class="preview-wrap">
+        <div class="preview bg-checker"><canvas id="out-canvas"></canvas></div>
+        <div class="preview-chat">
+          <div class="chat dark"><img id="chat-dark" alt=""><span>ダーク</span></div>
+          <div class="chat light"><img id="chat-light" alt=""><span>ライト</span></div>
+        </div>
+      </div>
+      <p class="size-info" id="size-info"></p>
+
+      <div class="row wrap">
+        <button class="primary grow" id="download">PNGを保存</button>
+        <button class="grow" id="share" hidden>共有 / 写真に保存</button>
+      </div>
+
+      <details class="tips">
+        <summary>Discordに登録するには</summary>
+        <ul>
+          <li><b>スタンプ</b>：PNG・320×320px・512KB以下。サーバー設定 →「スタンプ」からアップロード。</li>
+          <li><b>絵文字</b>：PNG推奨・128×128px・256KB以下。サーバー設定 →「絵文字」からアップロード。</li>
+          <li>スタンプはスマホアプリからはアップロードできないことがあります。その場合はPCかブラウザ版Discordから登録してください。</li>
+        </ul>
+      </details>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
