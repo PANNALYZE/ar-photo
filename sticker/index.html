@@ -36,6 +36,7 @@
 
       <div class="panel" data-panel="ai">
         <p class="hint">人物・キャラ・物などを自動で切り抜きます。初回だけAIモデルのダウンロード（Wi-Fi推奨）があります。</p>
+        <p class="hint tip">💡 キャラだけ切り抜きたいときは、先に画像の上を指でなぞって<b>キャラを四角く囲んで</b>からボタンを押してね。囲んだ範囲だけをAIが処理するので精度が上がります。</p>
         <div class="row">
           <label class="inline">画質
             <select id="ai-model">
@@ -44,7 +45,10 @@
             </select>
           </label>
         </div>
-        <button class="primary" id="ai-run">AIで背景を消す</button>
+        <div class="row">
+          <button class="primary grow" id="ai-run">AIで背景を消す</button>
+          <button id="clear-rect" hidden>範囲を解除</button>
+        </div>
         <div class="progress" id="ai-progress" hidden>
           <div class="bar"><div class="fill" id="ai-progress-fill"></div></div>
           <p id="ai-progress-text">準備中…</p>
@@ -61,12 +65,13 @@
       </div>
 
       <div class="panel" data-panel="brush" hidden>
-        <p class="hint">指でなぞって消す／戻す。2本指でズーム・移動できます。</p>
+        <p class="hint" id="brush-hint">指でなぞって消す／戻す。2本指でズーム・移動できます。</p>
         <div class="seg">
           <button class="seg-btn active" data-brush="erase">消しゴム</button>
           <button class="seg-btn" data-brush="restore">復元ブラシ</button>
+          <button class="seg-btn" data-brush="lasso">囲んで残す</button>
         </div>
-        <label>ブラシの太さ <output id="brush-val">30</output>
+        <label id="brush-size-label">ブラシの太さ <output id="brush-val">30</output>
           <input type="range" id="brush-size" min="4" max="150" value="30">
         </label>
       </div>
@@ -85,6 +90,7 @@
       <div class="viewer bg-checker" id="viewer">
         <div class="stage" id="stage">
           <canvas id="canvas"></canvas>
+          <canvas id="overlay"></canvas>
         </div>
         <div class="brush-cursor" id="brush-cursor" hidden></div>
       </div>

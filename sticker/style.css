@@ -73,6 +73,7 @@ h2 {
 }
 
 .hint { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 6px 0 10px; }
+.hint.tip { background: var(--soft); color: var(--text); border-radius: 8px; padding: 8px 10px; }
 
 button, .file-btn span {
   font: inherit;
@@ -173,6 +174,8 @@ button.icon { min-height: 36px; padding: 4px 10px; font-size: 13px; }
   will-change: transform;
 }
 .stage canvas { display: block; }
+.stage #overlay { position: absolute; left: 0; top: 0; pointer-events: none; }
+.viewer.mode-ai, .viewer.mode-lasso { cursor: crosshair; }
 .viewer.mode-color { cursor: crosshair; }
 .viewer.mode-brush { cursor: none; }
 

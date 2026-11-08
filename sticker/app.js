@@ -4,7 +4,8 @@
  * すべての処理はブラウザ内で完結する（画像はサーバーに送信しない）。
  *  - AIで自動: @imgly/background-removal（ONNX / ISNet）を CDN から遅延読み込み
  *  - 色で消す: タップした色を塗りつぶし方式で透過（境界は半透明にしてフチのギザギザを抑える）
- *  - 手直し : 消しゴム / 復元ブラシ（2本指でズーム・移動）
+ *  - 範囲指定: AIタブで四角く囲むと、その範囲だけをAIで処理（キャラだけ切り抜きたい時に有効）
+ *  - 手直し : 消しゴム / 復元ブラシ / 囲んで残す（2本指でズーム・移動）
  * 透過情報は「マスク」(0〜255) として元画像とは別に持ち、表示・書き出し時に合成する。
  */
 
@@ -29,12 +30,16 @@ let fileBaseName = "sticker";
 const undoStack = [];
 
 let mode = "ai";       // ai | color | brush
-let brushMode = "erase";
+let brushMode = "erase"; // erase | restore | lasso
+let aiRect = null;     // AIで処理する範囲 {x, y, w, h}（画像座標）
+let lasso = null;      // 囲んで残す: なぞった点の配列
 let preset = "sticker";
 const view = { s: 1, tx: 0, ty: 0 };
 
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
+const overlay = $("overlay");
+const octxOverlay = overlay.getContext("2d");
 const viewer = $("viewer");
 const stage = $("stage");
 
@@ -107,6 +112,10 @@ async function loadFile(file) {
 
   canvas.width = W;
   canvas.height = H;
+  overlay.width = W;
+  overlay.height = H;
+  setAiRect(null);
+  lasso = null;
   disp = ctx.createImageData(W, H);
   render();
 
@@ -158,6 +167,69 @@ function updateUndoBtn() {
 // ---------- view (zoom / pan) ----------
 function applyView() {
   stage.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`;
+  drawOverlay();
+}
+
+// ---------- overlay（範囲指定・なげなわの表示） ----------
+function drawOverlay() {
+  if (!W) return;
+  const o = octxOverlay;
+  o.clearRect(0, 0, W, H);
+  const lw = 2 / view.s;
+  if (mode === "ai" && aiRect) {
+    o.fillStyle = "rgba(0, 0, 0, 0.45)";
+    o.fillRect(0, 0, W, H);
+    o.clearRect(aiRect.x, aiRect.y, aiRect.w, aiRect.h);
+    o.lineWidth = lw;
+    o.setLineDash([6 / view.s, 4 / view.s]);
+    o.strokeStyle = "#ffffff";
+    o.strokeRect(aiRect.x, aiRect.y, aiRect.w, aiRect.h);
+    o.setLineDash([]);
+  }
+  if (lasso && lasso.length > 1) {
+    o.beginPath();
+    o.moveTo(lasso[0].x, lasso[0].y);
+    for (let i = 1; i < lasso.length; i++) o.lineTo(lasso[i].x, lasso[i].y);
+    o.closePath();
+    o.fillStyle = "rgba(88, 101, 242, 0.18)";
+    o.fill();
+    o.lineWidth = lw * 1.5;
+    o.strokeStyle = "#5865f2";
+    o.stroke();
+  }
+}
+
+function setAiRect(r) {
+  aiRect = r;
+  $("clear-rect").hidden = !r;
+  drawOverlay();
+}
+
+function rectFrom(a, b) {
+  const x0 = Math.max(0, Math.min(a.x, b.x)), y0 = Math.max(0, Math.min(a.y, b.y));
+  const x1 = Math.min(W, Math.max(a.x, b.x)), y1 = Math.min(H, Math.max(a.y, b.y));
+  return { x: Math.floor(x0), y: Math.floor(y0), w: Math.ceil(x1 - x0), h: Math.ceil(y1 - y0) };
+}
+
+/** なぞった線で囲んだ内側だけを残し、外側を消す */
+function applyLasso(points) {
+  if (points.length < 3) return;
+  const tmp = makeCanvas(W, H);
+  const t = tmp.getContext("2d", { willReadFrequently: true });
+  t.beginPath();
+  t.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) t.lineTo(points[i].x, points[i].y);
+  t.closePath();
+  t.fillStyle = "#fff";
+  t.fill();
+  const a = t.getImageData(0, 0, W, H).data;
+  let inside = 0;
+  for (let i = 0, p = 3; i < W * H; i++, p += 4) if (a[p]) inside++;
+  if (inside < 16) { toast("囲んだ範囲が小さすぎます"); return; }
+  pushUndo();
+  for (let i = 0, p = 3; i < W * H; i++, p += 4) if (a[p] < mask[i]) mask[i] = a[p];
+  render();
+  scheduleExport();
 }
 function fitScale() {
   const r = viewer.getBoundingClientRect();
@@ -328,10 +400,11 @@ const pointers = new Map();
 let pinch = null;
 let tap = null;  // { x, y, moved } 色モードのタップ判定 / 1本指パン
 let pan = null;
+let selecting = null; // AI範囲指定のドラッグ開始点
 
 function updateCursor(e) {
   const cur = $("brush-cursor");
-  if (mode !== "brush" || !W || e.pointerType === "touch") { cur.hidden = true; return; }
+  if (mode !== "brush" || brushMode === "lasso" || !W || e.pointerType === "touch") { cur.hidden = true; return; }
   const r = viewer.getBoundingClientRect();
   const size = +$("brush-size").value;
   cur.hidden = false;
@@ -354,6 +427,8 @@ viewer.addEventListener("pointerdown", (e) => {
       stroke = null;
     }
     tap = null; pan = null;
+    if (selecting) { selecting = null; setAiRect(null); }
+    if (lasso) { lasso = null; drawOverlay(); }
     const [p1, p2] = [...pointers.values()];
     pinch = {
       d0: Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1,
@@ -365,6 +440,14 @@ viewer.addEventListener("pointerdown", (e) => {
   }
   if (pointers.size > 2) return;
 
+  if (mode === "ai") {
+    selecting = toImage(e.clientX, e.clientY);
+    return;
+  }
+  if (mode === "brush" && brushMode === "lasso") {
+    lasso = [toImage(e.clientX, e.clientY)];
+    return;
+  }
   if (mode === "brush") {
     pushUndo();
     const p = toImage(e.clientX, e.clientY);
@@ -396,6 +479,19 @@ viewer.addEventListener("pointermove", (e) => {
     applyView();
     return;
   }
+  if (selecting) {
+    setAiRect(rectFrom(selecting, toImage(e.clientX, e.clientY)));
+    return;
+  }
+  if (lasso) {
+    const p = toImage(e.clientX, e.clientY);
+    const last = lasso[lasso.length - 1];
+    if (Math.hypot(p.x - last.x, p.y - last.y) * view.s > 2) {
+      lasso.push(p);
+      drawOverlay();
+    }
+    return;
+  }
   if (stroke) {
     const p = toImage(e.clientX, e.clientY);
     paintLine(stroke.last, p);
@@ -418,6 +514,19 @@ function endPointer(e) {
   pointers.delete(e.pointerId);
   if (pinch) {
     if (pointers.size < 2) pinch = null;
+    return;
+  }
+  if (selecting) {
+    selecting = null;
+    // 小さすぎる範囲（ただのタップ）は解除扱い
+    if (aiRect && (aiRect.w * view.s < 24 || aiRect.h * view.s < 24)) setAiRect(null);
+    return;
+  }
+  if (lasso) {
+    const pts = lasso;
+    lasso = null;
+    drawOverlay();
+    if (e.type === "pointerup") applyLasso(pts);
     return;
   }
   if (stroke) {
@@ -460,7 +569,10 @@ async function runAI() {
   text.textContent = "AIを準備中…";
   try {
     if (!aiModule) aiModule = await import(AI_MODULE_URL);
-    const input = await canvasToBlob(srcCanvas);
+    const rect = aiRect && aiRect.w > 0 && aiRect.h > 0 ? { ...aiRect } : { x: 0, y: 0, w: W, h: H };
+    const crop = makeCanvas(rect.w, rect.h);
+    crop.getContext("2d").drawImage(srcCanvas, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
+    const input = await canvasToBlob(crop);
     const model = $("ai-model").value;
     const result = await aiModule.removeBackground(input, {
       model,
@@ -477,12 +589,20 @@ async function runAI() {
       },
     });
     const bmp = await createImageBitmap(result);
-    const tmp = makeCanvas(W, H);
+    const tmp = makeCanvas(rect.w, rect.h);
     const tctx = tmp.getContext("2d", { willReadFrequently: true });
-    tctx.drawImage(bmp, 0, 0, W, H);
-    const out = tctx.getImageData(0, 0, W, H).data;
+    tctx.drawImage(bmp, 0, 0, rect.w, rect.h);
+    if (bmp.close) bmp.close();
+    const out = tctx.getImageData(0, 0, rect.w, rect.h).data;
     pushUndo();
-    for (let i = 0, p = 3; i < W * H; i++, p += 4) mask[i] = out[p];
+    // 範囲の外は消し、範囲の中はAIの結果を使う
+    mask.fill(0);
+    for (let y = 0; y < rect.h; y++) {
+      let i = (rect.y + y) * W + rect.x;
+      let p = y * rect.w * 4 + 3;
+      for (let x = 0; x < rect.w; x++, i++, p += 4) mask[i] = out[p];
+    }
+    setAiRect(null);
     render();
     scheduleExport();
     text.textContent = "完了！ 気になる所は「手直し」で調整できます。";
@@ -709,15 +829,27 @@ document.querySelectorAll(".tab").forEach((t) =>
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
     document.querySelectorAll(".panel").forEach((p) => (p.hidden = p.dataset.panel !== mode));
     viewer.classList.toggle("mode-color", mode === "color");
-    viewer.classList.toggle("mode-brush", mode === "brush");
+    viewer.classList.toggle("mode-ai", mode === "ai");
+    updateBrushClasses();
     if (mode !== "brush") $("brush-cursor").hidden = true;
+    drawOverlay();
   })
 );
+
+function updateBrushClasses() {
+  viewer.classList.toggle("mode-brush", mode === "brush" && brushMode !== "lasso");
+  viewer.classList.toggle("mode-lasso", mode === "brush" && brushMode === "lasso");
+}
 
 document.querySelectorAll("[data-brush]").forEach((b) =>
   b.addEventListener("click", () => {
     brushMode = b.dataset.brush;
     document.querySelectorAll("[data-brush]").forEach((x) => x.classList.toggle("active", x === b));
+    updateBrushClasses();
+    $("brush-size-label").hidden = brushMode === "lasso";
+    $("brush-hint").textContent = brushMode === "lasso"
+      ? "残したい部分のまわりを指でぐるっと囲むと、外側がまとめて消えます。"
+      : "指でなぞって消す／戻す。2本指でズーム・移動できます。";
   })
 );
 
@@ -757,6 +889,7 @@ $("outline-on").addEventListener("change", () => {
 });
 
 $("ai-run").addEventListener("click", runAI);
+$("clear-rect").addEventListener("click", () => setAiRect(null));
 $("auto-edge").addEventListener("click", () => W && autoRemoveCorners());
 $("undo").addEventListener("click", undo);
 $("reset-view").addEventListener("click", fitView);
@@ -782,6 +915,8 @@ try {
   const probe = new File([new Blob()], "x.png", { type: "image/png" });
   if (navigator.canShare && navigator.canShare({ files: [probe] })) $("share").hidden = false;
 } catch (e) { /* not supported */ }
+
+viewer.classList.add("mode-ai");
 
 let resizeTimer = 0;
 window.addEventListener("resize", () => {
