@@ -1,0 +1,50 @@
+:root {
+  --bg: #04070c; --ink: #eaf3fa; --dim: #8497a9; --faint: #4b5b6b;
+  --cyan: #58d6ff; --amber: #ffb454; --red: #ff6b5e; --green: #7de3a5;
+  --line: rgba(130, 190, 230, .22); --panel: rgba(8, 14, 22, .62);
+  --jp: "Noto Sans JP", "IPAPGothic", sans-serif; --mono: "JetBrains Mono", monospace;
+}
+html, body { margin: 0; background: #000; overflow: hidden; }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);
+  font-family: var(--jp); color: var(--ink); -webkit-font-smoothing: antialiased; }
+#gl { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0, 0, 0, .55) 100%),
+              linear-gradient(to top, rgba(2, 4, 8, .86) 0, rgba(2, 4, 8, 0) 26%); }
+#hud > * { position: absolute; z-index: 1; }
+
+/* 章タイトル（左上） */
+.chapter { left: 72px; top: 60px; }
+.chapter .no { font: 700 15px var(--mono); letter-spacing: .28em; color: var(--cyan); }
+.chapter .no b { color: var(--ink); }
+.chapter .jp { font-weight: 900; font-size: 58px; line-height: 1.15; letter-spacing: .08em; margin-top: 6px; }
+.chapter .en { font: 400 15px var(--mono); letter-spacing: .3em; color: var(--dim); margin-top: 8px; }
+.chapter .rule { width: 64px; height: 2px; background: var(--cyan); margin-top: 18px; }
+
+/* 字幕（下中央） */
+.subtitle { left: 0; right: 0; bottom: 92px; text-align: center; font-weight: 500; font-size: 40px;
+  letter-spacing: .06em; text-shadow: 0 2px 24px rgba(0, 0, 0, .9), 0 0 3px rgba(0, 0, 0, .9); }
+.subtitle em { font-style: normal; color: var(--cyan); }
+.subtitle strong { font-weight: 900; color: var(--amber); }
+
+/* 計測パネル（右） */
+.panel { right: 72px; top: 64px; width: 400px; padding: 22px 26px 20px; background: var(--panel);
+  border: 1px solid var(--line); border-left: 2px solid var(--cyan); backdrop-filter: blur(6px); }
+.panel h3 { margin: 0 0 14px; font: 700 13px var(--mono); letter-spacing: .26em; color: var(--cyan); }
+.panel .row { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0;
+  border-top: 1px solid rgba(130, 190, 230, .12); font-size: 17px; color: var(--dim); }
+.panel .row b { font: 700 24px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.panel .row b small { font: 400 14px var(--mono); color: var(--dim); margin-left: 6px; }
+.panel canvas { display: block; width: 100%; margin-top: 12px; }
+.panel .cap { font-size: 13px; color: var(--faint); margin-top: 6px; letter-spacing: .04em; }
+.ok { color: var(--green) !important; } .warn { color: var(--amber) !important; }
+
+/* 3D上の注記ラベル */
+.tag { font: 400 15px var(--mono); letter-spacing: .12em; color: var(--amber); white-space: nowrap;
+  transform: translate(-50%, -50%); text-shadow: 0 0 8px #000, 0 0 2px #000; }
+.tag.c { color: var(--cyan); }
+.tag i { font-style: normal; font-family: var(--jp); letter-spacing: .06em; }
+
+.note { right: 72px; bottom: 40px; font-size: 14px; color: var(--faint); letter-spacing: .08em; }
+.credit { left: 72px; bottom: 40px; font: 400 13px var(--mono); color: var(--faint); letter-spacing: .2em; }

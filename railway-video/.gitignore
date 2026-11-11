@@ -1,0 +1,6 @@
+node_modules/
+out/
+__pycache__/
+*.pyc
+# 再生成できる描画用バイナリ（python3 tools/design_post.py で作成）
+data/design/*.bin

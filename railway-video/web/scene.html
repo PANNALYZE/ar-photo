@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>railway-video scene</title>
+<link rel="stylesheet" href="/node_modules/@fontsource/noto-sans-jp/300.css">
+<link rel="stylesheet" href="/node_modules/@fontsource/noto-sans-jp/400.css">
+<link rel="stylesheet" href="/node_modules/@fontsource/noto-sans-jp/700.css">
+<link rel="stylesheet" href="/node_modules/@fontsource/noto-sans-jp/900.css">
+<link rel="stylesheet" href="/node_modules/@fontsource/jetbrains-mono/400.css">
+<link rel="stylesheet" href="/node_modules/@fontsource/jetbrains-mono/700.css">
+<link rel="stylesheet" href="/web/lib/ui.css">
+<script type="importmap">
+{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<div id="stage"><canvas id="gl"></canvas><div id="hud"></div></div>
+<script type="module">
+const name = new URLSearchParams(location.search).get('scene') || 'design';
+const mod = await import(`/web/scenes/${name}.js`);
+const scene = await mod.create({ canvas: document.getElementById('gl'), hud: document.getElementById('hud') });
+window.__duration = scene.duration;
+window.__render = (t) => scene.render(t);
+await scene.render(0);
+await document.fonts.ready;
+window.__ready = true;
+// ブラウザで直接開いたときのプレビュー再生（?play=1）
+if (new URLSearchParams(location.search).get('play')) {
+  const t0 = performance.now();
+  const loop = () => { scene.render(((performance.now() - t0) / 1000) % scene.duration); requestAnimationFrame(loop); };
+  loop();
+}
+</script>
+</body>
+</html>
