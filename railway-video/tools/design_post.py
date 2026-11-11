@@ -69,8 +69,8 @@ def main():
                 v = ndimage.gaussian_filter(v, 0.6, mode='nearest')
             frames.append(np.clip(v, 0, 255).astype(np.uint8).ravel())
             r = hist['stages'][si]['history'][k]
-            iters.append(dict(stage=si + 1, objective=r['objective'], volume=r['volume'],
-                              beta=r['beta'], grayness=r['grayness'], compliance=r['compliance']))
+            iters.append(dict(stage=si + 1, objective=max(r['ratio']), ratio=r['ratio'], volume=r['volume'],
+                              beta=r['beta'], grayness=r['grayness']))
     np.array(frames).tofile(os.path.join(OUT, 'frames.bin'))
 
     # --- 最終形状を白黒化して再解析、従来型と比較 ---------------------------
@@ -81,7 +81,7 @@ def main():
     design = ~(solid | void)
     bw = (rho >= 0.5).astype(float)
     gen, us, vms = analyse(g, fixed, loads, bw)
-    conv_rho, col = viaduct.conventional(g, solid, void, bw[design].sum())
+    conv_rho, dims = viaduct.conventional(g, solid, void, bw[design].sum())
     conv, _, _ = analyse(g, fixed, loads, conv_rho)
     vol_m3 = lambda r: float(r[design].sum() * h ** 3)  # noqa: E731
 
@@ -102,16 +102,23 @@ def main():
                     volfrac=viaduct.VOLFRAC),
         stress_scale_MPa=scale / 1e6, load_cases=names,
         generative=dict(volume_m3=vol_m3(bw), cases=gen),
-        conventional=dict(volume_m3=vol_m3(conv_rho), column_m=col, cases=conv),
+        conventional=dict(volume_m3=vol_m3(conv_rho), dims=dims, cases=conv),
         stiffness_gain=[c['compliance'] / g_['compliance'] for c, g_ in zip(conv, gen)],
     )
+    # 字幕の主張は再解析の結果から機械的に作る（都合のよい数字だけを拾わない）
+    lo, hi = min(meta['stiffness_gain']), max(meta['stiffness_gain'])
+    if lo >= 1.05:
+        meta['claim_html'] = f'同じコンクリート量で、剛性は従来型の <strong>{lo:.1f}〜{hi:.1f} 倍</strong>。'
+    else:
+        meta['claim_html'] = (f'剛性は従来型の <strong>{lo:.1f}〜{hi:.1f} 倍</strong>。'
+                              '不利な荷重ケースが残ることも、AIは隠さず示す。')
     json.dump(meta, open(os.path.join(OUT, 'meta.json'), 'w'), ensure_ascii=False, indent=1)
     print(f"格子 {nx}x{ny}x{nz}  フレーム {len(frames)}")
-    print(f"体積 [m3]: 生成 {meta['generative']['volume_m3']:.1f} / 従来型 {meta['conventional']['volume_m3']:.1f}"
-          f"（柱 {col:.2f} m 角）")
+    print(f"体積 [m3]: 生成 {meta['generative']['volume_m3']:.1f} / 従来型 {meta['conventional']['volume_m3']:.1f}  {dims}")
     for n, a, b, r in zip(names, gen, conv, meta['stiffness_gain']):
         print(f"{n}: 床版最大変位 生成 {a['deck_disp_max_mm']:.2f} mm / 従来 {b['deck_disp_max_mm']:.2f} mm, "
-              f"コンプライアンス比（従来/生成） {r:.2f}")
+              f"剛性比（従来型のコンプライアンス/生成形状） {r:.2f}")
+    print('字幕:', meta['claim_html'])
 
 
 if __name__ == '__main__':

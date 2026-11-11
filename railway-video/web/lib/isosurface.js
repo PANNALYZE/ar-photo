@@ -19,6 +19,10 @@ export class IsoMesher {
     this.positions = new Float32Array(maxVerts * 3);
     this.normals = new Float32Array(maxVerts * 3);
     this.values = new Float32Array(maxVerts);
+    this.blur = new Float32Array(n);  // 密度のぼかし（頂点の遮蔽＝陰りの推定に使う）
+    this.tmp = new Float32Array(n);
+    this.ao = new Float32Array(maxVerts);
+    this.aoRadius = 3;
     this.count = 0;
     this.offs = CORNER.map(([i, j, k]) => i + this.px * (j + this.py * k));
   }
@@ -37,9 +41,39 @@ export class IsoMesher {
   load(a, b = null, mix = 0, scale = 1 / 255) { this._fill(this.vol, a, b, mix, scale); return this; }
   loadAux(a, b = null, mix = 0, scale = 1) { this._fill(this.aux, a, b, mix, scale); return this; }
 
+  // 密度を箱型フィルタで2回ぼかす（3軸分離・移動和）。周囲が詰まっている場所ほど値が大きい
+  _blur() {
+    const { px, py, pz, vol, blur, tmp } = this, r = this.aoRadius, w = 1 / (2 * r + 1);
+    const pass = (src, dst, n, stride, lines) => {
+      for (const base of lines) {
+        let acc = 0;
+        for (let i = 0; i <= r && i < n; i++) acc += src[base + i * stride];
+        for (let i = 0; i < n; i++) {
+          dst[base + i * stride] = acc * w;
+          if (i + r + 1 < n) acc += src[base + (i + r + 1) * stride];
+          if (i - r >= 0) acc -= src[base + (i - r) * stride];
+        }
+      }
+    };
+    const lx = [], ly = [], lz = [];
+    for (let k = 0; k < pz; k++) for (let j = 0; j < py; j++) lx.push(px * (j + py * k));
+    for (let k = 0; k < pz; k++) for (let i = 0; i < px; i++) ly.push(i + px * py * k);
+    for (let j = 0; j < py; j++) for (let i = 0; i < px; i++) lz.push(i + px * j);
+    this._lines ??= [lx, ly, lz];
+    let a = vol;
+    for (let rep = 0; rep < 2; rep++) {
+      pass(a, tmp, px, 1, this._lines[0]);
+      pass(tmp, blur, py, px, this._lines[1]);
+      pass(blur, tmp, pz, px * py, this._lines[2]);
+      blur.set(tmp);
+      a = blur;
+    }
+  }
+
   build(iso = 0.5) {
-    const { px, py, pz, h, vol, aux, gx, gy, gz, offs } = this;
+    const { px, py, pz, h, vol, aux, gx, gy, gz, offs, blur } = this;
     const sxy = px * py;
+    this._blur();
     for (let k = 1; k < pz - 1; k++) for (let j = 1; j < py - 1; j++) {
       let q = 1 + px * (j + py * k);
       for (let i = 1; i < px - 1; i++, q++) {
@@ -48,8 +82,8 @@ export class IsoMesher {
         gz[q] = vol[q + sxy] - vol[q - sxy];
       }
     }
-    const P = this.positions, N = this.normals, V = this.values;
-    const ev = new Float32Array(12 * 7); // 辺ごとの頂点 (x,y,z,nx,ny,nz,value)
+    const P = this.positions, N = this.normals, V = this.values, AO = this.ao;
+    const ev = new Float32Array(12 * 8); // 辺ごとの頂点 (x,y,z,nx,ny,nz,value,ao)
     const f = new Float32Array(8);
     let n = 0;
     const limit = V.length - 15;
@@ -65,7 +99,7 @@ export class IsoMesher {
         const t = (iso - f[a]) / (f[b] - f[a]);
         const qa = q + offs[a], qb = q + offs[b];
         const ca = CORNER[a], cb = CORNER[b];
-        const o = e * 7;
+        const o = e * 8;
         // 周囲1セル分の詰め物と、セル中心（+0.5）を考慮して実座標へ
         ev[o] = (i + ca[0] + (cb[0] - ca[0]) * t - 0.5) * h;
         ev[o + 1] = (j + ca[1] + (cb[1] - ca[1]) * t - 0.5) * h;
@@ -76,14 +110,16 @@ export class IsoMesher {
         const l = Math.hypot(ax, ay, az) || 1;
         ev[o + 3] = ax / l; ev[o + 4] = ay / l; ev[o + 5] = az / l;
         ev[o + 6] = aux[qa] + (aux[qb] - aux[qa]) * t;
+        ev[o + 7] = blur[qa] + (blur[qb] - blur[qa]) * t;
       }
       for (let ti = ci << 4; triTable[ti] !== -1; ti += 3) {
         if (n > limit) throw new Error('IsoMesher: 頂点バッファが不足しています');
         // 三角形表の順でそのまま外向き（反時計回り）になる。球の体積テストで確認済み
         for (let c = 0; c < 3; c++) {
-          const o = triTable[ti + c] * 7, m = n * 3;
+          const o = triTable[ti + c] * 8, m = n * 3;
           P[m] = ev[o]; P[m + 1] = ev[o + 1]; P[m + 2] = ev[o + 2];
           N[m] = ev[o + 3]; N[m + 1] = ev[o + 4]; N[m + 2] = ev[o + 5];
+          AO[n] = ev[o + 7];
           V[n++] = ev[o + 6];
         }
       }

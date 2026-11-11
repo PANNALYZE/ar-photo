@@ -25,14 +25,14 @@ export function createStage(canvas, { fog = 0.0075, shadows = true, bloom = 0.42
   world.rotation.x = -Math.PI / 2;
   scene.add(world);
 
-  scene.add(new THREE.HemisphereLight(0x8fb8e8, 0x0a0e14, 0.55));
+  scene.add(new THREE.HemisphereLight(0x9cbfe6, 0x10151c, 0.75));
   const key = new THREE.DirectionalLight(0xffe6cc, 2.6);
   key.castShadow = shadows;
   key.shadow.mapSize.set(4096, 4096);
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.06;
   scene.add(key, key.target);
-  const rim = new THREE.DirectionalLight(0x58c8ff, 1.7);
+  const rim = new THREE.DirectionalLight(0x86c6ff, 1.25);
   scene.add(rim, rim.target);
 
   // 光源を注視点のまわりに置く（影の範囲 size [m]）
