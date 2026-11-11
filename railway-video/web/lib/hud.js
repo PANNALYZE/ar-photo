@@ -33,3 +33,15 @@ export function tag(hud, html, cls = '') {
     node.style.opacity = p.z < 1 ? opacity : 0;
   };
 }
+
+// 技術者の指示文。t0 から打ち込まれ、t1 で消える
+export function prompt(hud, text, t0, t1, cps = 22) {
+  const node = el(hud, 'prompt', '<div class="who">ENGINEER ▸ 指示</div><span></span><i class="caret"></i>');
+  const span = node.querySelector('span'), caret = node.querySelector('.caret');
+  return (t) => {
+    const n = Math.max(0, Math.min(text.length, Math.floor((t - t0 - 0.4) * cps)));
+    span.textContent = text.slice(0, n);
+    caret.style.opacity = n < text.length || Math.floor(t * 2.5) % 2 ? 1 : 0;
+    node.style.opacity = fade(t, t0, t1, 0.4);
+  };
+}

@@ -6,6 +6,7 @@
 ※ 荷重値・寸法はすべてデモ用の架空値。設計標準に基づく照査ではない。
 """
 import json
+import os
 import sys
 import numpy as np
 from fem3d import Grid
@@ -126,11 +127,22 @@ def run(h_coarse, out, log=print):
     """
     stages = [
         dict(h=h_coarse, iters=45, beta=((0, 1), (22, 2), (34, 4)), rebuild=1),
-        dict(h=h_coarse / 2, iters=27, beta=((0, 4), (8, 8), (17, 16)), rebuild=3),
+        dict(h=h_coarse / 2, iters=12, beta=((0, 4), (4, 8), (8, 16)), rebuild=3),
     ]
-    norm, dims = baseline(h_coarse / 2, log)
-    x, meta = None, []
+    x, meta, start = None, [], 0
+    s1 = f'{out}_stage1.npz'
+    if os.path.exists(s1) and os.path.exists(out + '.json'):
+        # 段階1が済んでいれば、その結果から段階2だけをやり直す（中断からの再開用）
+        prev = json.load(open(out + '.json'))
+        norm, dims, meta, start = prev['norm'], prev['conventional'], prev['stages'][:1], 1
+        d = np.load(s1)
+        x = upsample(d['final'].astype(float), tuple(int(v) for v in d['shape']))
+        log('段階1の結果から再開します')
+    else:
+        norm, dims = baseline(h_coarse / 2, log)
     for si, st in enumerate(stages):
+        if si < start:
+            continue
         g, fixed, loads, solid, void = build(st['h'])
         log(f"--- 段階{si + 1}: 格子 {g.nx}x{g.ny}x{g.nz} = {g.nel:,} 要素 / {g.ndof:,} 自由度")
         frames = []
