@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 # 再生成できる描画用バイナリ（python3 tools/design_post.py で作成）
 data/design/*.bin
+# 実行中に書き換わる最適化ログ（履歴は data/viaduct.json に残る）
+data/viaduct.log
