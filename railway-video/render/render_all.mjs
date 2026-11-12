@@ -62,6 +62,7 @@ if (!only.length) {
   const final = `out/railway_ai${variant ? `_${variant}` : ''}.mp4`;
   writeFileSync(path.join(ROOT, 'out/concat.txt'), list.join('\n'));
   await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', 'out/concat.txt', '-i', 'out/music.wav',
-    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', final]);
+    '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-aac_pns', '0', '-aac_is', '0',
+    '-shortest', '-movflags', '+faststart', final]);
   console.log(`${final} を書き出しました`);
 }
