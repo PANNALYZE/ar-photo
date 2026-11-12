@@ -165,7 +165,7 @@ class Solver:
 
         def cb(_):
             count[0] += 1
-        u, info = spla.cg(K, f, x0=x0, M=self.M, rtol=self.tol, maxiter=4000, callback=cb)
+        u, info = spla.cg(K, f, x0=x0, M=self.M, rtol=self.tol, maxiter=300, callback=cb)
         if info != 0:
             raise RuntimeError(f'CG が収束しませんでした (info={info})')
         self.iters.append(count[0])

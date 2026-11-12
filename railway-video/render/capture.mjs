@@ -18,7 +18,7 @@ const browser = await chromium.launch({ args: ['--ignore-gpu-blocklist', '--enab
 const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
 page.on('console', (m) => { if (m.type() === 'error' || process.env.VERBOSE) console.log(`[page] ${m.text()}`); });
 page.on('pageerror', (e) => console.log(`[pageerror] ${e.message}`));
-await page.goto(`http://127.0.0.1:${server.address().port}/web/scene.html?scene=${scene}`);
+await page.goto(`http://127.0.0.1:${server.address().port}/web/scene.html?scene=${scene}${arg('query', '')}`);
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
 const frame = async (t) => {
   await page.evaluate(async (tt) => { await window.__render(tt); await document.fonts.ready; }, t);
@@ -41,8 +41,9 @@ if (out.endsWith('.mp4')) {
   ff.stdin.end();
   await new Promise((r) => ff.on('close', r));
 } else {
-  const t0 = Date.now();
   await frame(Number(arg('t', 0)));
+  const t0 = Date.now();
+  for (let i = 1; i <= Number(arg('bench', 0)); i++) await frame(Number(arg('t', 0)) + i / 30);
   await page.screenshot({ path: out });
   console.log(`${out} （描画 ${Date.now() - t0}ms）`);
 }

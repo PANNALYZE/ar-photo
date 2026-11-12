@@ -88,7 +88,11 @@ def optimize(grid, fixed, loads, norm, volfrac, pn=6.0, solid=None, void=None,
             solver.rebuild(K)
         cs, dcs = [], []
         for i, f in enumerate(loads):
-            us[i] = solver.solve(K, f, x0=us[i])
+            try:
+                us[i] = solver.solve(K, f, x0=us[i])
+            except RuntimeError:                      # 古い前処理で収束しないときは作り直して再試行
+                solver.rebuild(K)
+                us[i] = solver.solve(K, f, x0=us[i])
             Ue = us[i][grid.edof]
             ce = np.einsum('ij,jk,ik->i', Ue, grid.Ke, Ue)  # E=1 あたりの要素ひずみエネルギー×2
             cs.append(float(E @ ce))

@@ -9,6 +9,7 @@ html, body { margin: 0; background: #000; overflow: hidden; }
   font-family: var(--jp); color: var(--ink); -webkit-font-smoothing: antialiased; }
 #gl { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
 #hud { position: absolute; inset: 0; pointer-events: none; }
+#fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 10; }
 #hud::after { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0, 0, 0, .55) 100%),
               linear-gradient(to top, rgba(2, 4, 8, .86) 0, rgba(2, 4, 8, 0) 26%); }
@@ -71,3 +72,24 @@ html, body { margin: 0; background: #000; overflow: hidden; }
 .clock .time { font: 700 76px var(--mono); letter-spacing: .06em; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .clock .bar { width: 420px; height: 4px; margin: 6px auto 0; background: rgba(130, 190, 230, .2); }
 .clock .bar i { display: block; height: 100%; background: var(--amber); }
+
+/* 導入・結びの大きな文字 */
+.title { left: 0; right: 0; text-align: center; letter-spacing: .1em; text-shadow: 0 2px 30px rgba(0, 0, 0, .95); }
+.title b { font-weight: 900; }
+.title small { display: block; font: 400 20px var(--mono); letter-spacing: .5em; color: var(--cyan); margin-bottom: 22px; }
+.title.l1 { top: 420px; font-size: 88px; font-weight: 300; }
+.title.l2 { top: 430px; font-size: 40px; font-weight: 400; line-height: 1.9; color: #cfdbe6; }
+.title.l3 { top: 380px; font-size: 80px; font-weight: 300; }
+.title.l3 b { color: var(--cyan); }
+.title.l4 { top: 600px; font-size: 26px; color: var(--dim); letter-spacing: .3em; }
+.tiles { left: 72px; right: 72px; top: 120px; display: flex; gap: 20px; }
+.tile { flex: 1; border: 1px solid var(--line); background: #060a10; }
+.tile img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.tile div { padding: 12px 14px 14px; font-weight: 700; font-size: 24px; letter-spacing: .12em; }
+.tile b { font: 700 15px var(--mono); color: var(--cyan); margin-right: 12px; letter-spacing: .2em; }
+.title.e1 { top: 480px; font-size: 40px; line-height: 1.8; color: #cfdbe6; }
+.title.e2 { top: 660px; font-size: 54px; font-weight: 300; }
+.title.e2 b { color: var(--cyan); }
+.title.e3 { top: 500px; font-size: 84px; font-weight: 300; }
+.title.e3 small { font: 400 34px var(--jp); letter-spacing: .2em; color: #cfdbe6; margin-bottom: 26px; }
+.title.e4 { top: 960px; font: 400 18px var(--mono); letter-spacing: .14em; color: var(--dim); }

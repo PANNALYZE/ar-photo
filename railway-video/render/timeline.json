@@ -1,0 +1,9 @@
+[
+  { "scene": "opening",  "duration": 14 },
+  { "scene": "plan",     "duration": 31 },
+  { "scene": "design",   "duration": 40 },
+  { "scene": "build",    "duration": 31 },
+  { "scene": "tunnel",   "duration": 31 },
+  { "scene": "research", "duration": 30 },
+  { "scene": "ending",   "duration": 16 }
+]

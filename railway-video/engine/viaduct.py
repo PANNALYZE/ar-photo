@@ -127,7 +127,7 @@ def run(h_coarse, out, log=print):
     """
     stages = [
         dict(h=h_coarse, iters=45, beta=((0, 1), (22, 2), (34, 4)), rebuild=1),
-        dict(h=h_coarse / 2, iters=12, beta=((0, 4), (4, 8), (8, 16)), rebuild=3),
+        dict(h=h_coarse / 2, iters=9, beta=((0, 4), (3, 8), (6, 16)), rebuild=1),
     ]
     x, meta, start = None, [], 0
     s1 = f'{out}_stage1.npz'
@@ -145,16 +145,21 @@ def run(h_coarse, out, log=print):
             continue
         g, fixed, loads, solid, void = build(st['h'])
         log(f"--- 段階{si + 1}: 格子 {g.nx}x{g.ny}x{g.nz} = {g.nel:,} 要素 / {g.ndof:,} 自由度")
-        frames = []
+        frames, hist = [], []
+        shape = (g.nz, g.ny, g.nx)
+
+        def save(it, rho, rec, si=si, st=st, g=g, frames=frames, hist=hist, shape=shape):
+            # 反復ごとに保存する（途中で止まっても、そこまでの結果が使える）
+            frames.append((rho * 255).astype(np.uint8))
+            hist.append(rec)
+            np.savez_compressed(f'{out}_stage{si + 1}.npz', frames=np.array(frames), final=rho, shape=shape, h=st['h'])
+            json.dump(dict(stages=meta + [dict(h=st['h'], shape=shape, nel=g.nel, ndof=g.ndof, history=hist)],
+                           norm=norm, conventional=dims), open(out + '.json', 'w'))
+
         res = optimize(g, fixed, loads, norm, VOLFRAC, solid=solid, void=void,
                        iters=st['iters'], beta_schedule=st['beta'], rmin=max(1.5, 0.75 / st['h']),
-                       symmetry=('x', 'y'), x_init=x, rebuild_every=st['rebuild'],
-                       on_iter=lambda it, rho, rec: frames.append((rho * 255).astype(np.uint8)), log=log)
-        shape = (g.nz, g.ny, g.nx)
-        np.savez_compressed(f'{out}_stage{si + 1}.npz', frames=np.array(frames), final=res['rho'],
-                            shape=shape, h=st['h'])
+                       symmetry=('x', 'y'), x_init=x, rebuild_every=st['rebuild'], on_iter=save, log=log)
         meta.append(dict(h=st['h'], shape=shape, nel=g.nel, ndof=g.ndof, history=res['history']))
-        json.dump(dict(stages=meta, norm=norm, conventional=dims), open(out + '.json', 'w'))
         x = upsample(res['x'], shape)
     return res
 

@@ -15,20 +15,25 @@
 </script>
 </head>
 <body>
-<div id="stage"><canvas id="gl"></canvas><div id="hud"></div></div>
+<div id="stage"><canvas id="gl"></canvas><div id="hud"></div><div id="fade"></div></div>
 <script type="module">
 const name = new URLSearchParams(location.search).get('scene') || 'design';
 const mod = await import(`/web/scenes/${name}.js`);
 const scene = await mod.create({ canvas: document.getElementById('gl'), hud: document.getElementById('hud') });
 window.__duration = scene.duration;
-window.__render = (t) => scene.render(t);
+// 各シーンの頭と終わりは黒から／黒へ（シーン同士をそのまま連結できるようにする）
+const fadeEl = document.getElementById('fade');
+window.__render = (t) => {
+  fadeEl.style.opacity = Math.max(0, 1 - t / 0.5, (t - (scene.duration - 0.5)) / 0.5);
+  return scene.render(t);
+};
 await scene.render(0);
 await document.fonts.ready;
 window.__ready = true;
 // ブラウザで直接開いたときのプレビュー再生（?play=1）
 if (new URLSearchParams(location.search).get('play')) {
   const t0 = performance.now();
-  const loop = () => { scene.render(((performance.now() - t0) / 1000) % scene.duration); requestAnimationFrame(loop); };
+  const loop = () => { window.__render(((performance.now() - t0) / 1000) % scene.duration); requestAnimationFrame(loop); };
   loop();
 }
 </script>

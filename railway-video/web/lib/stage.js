@@ -9,6 +9,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 export const COLORS = { bg: 0x04070c, cyan: 0x58d6ff, amber: 0xffb454, concrete: 0xcdd4da, red: 0xff6b5e };
 
 export function createStage(canvas, { fog = 0.0075, shadows = true, bloom = 0.42 } = {}) {
+  const q = new URLSearchParams(location.search);
+  const msaa = Number(q.get('msaa') ?? 4), bloomRes = Number(q.get('bres') ?? 1);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(1);
   renderer.setSize(1920, 1080, false);
@@ -50,10 +52,10 @@ export function createStage(canvas, { fog = 0.0075, shadows = true, bloom = 0.42
   // 発光（ブルーム）つきの合成。MSAA 付きの浮動小数ターゲットに描いてからトーンマップする
   let render = () => renderer.render(scene, camera);
   if (bloom > 0) {
-    const target = new THREE.WebGLRenderTarget(1920, 1080, { samples: 4, type: THREE.HalfFloatType });
+    const target = new THREE.WebGLRenderTarget(1920, 1080, { samples: msaa, type: THREE.HalfFloatType });
     const composer = new EffectComposer(renderer, target);
     composer.addPass(new RenderPass(scene, camera));
-    composer.addPass(new UnrealBloomPass(new THREE.Vector2(1920, 1080), bloom, 0.7, 0.82));
+    composer.addPass(new UnrealBloomPass(new THREE.Vector2(1920 * bloomRes, 1080 * bloomRes), bloom, 0.7, 0.82));
     composer.addPass(new OutputPass());
     render = () => composer.render();
   }

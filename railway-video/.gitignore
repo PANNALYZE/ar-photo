@@ -6,3 +6,5 @@ __pycache__/
 data/design/*.bin
 # 実行中に書き換わる最適化ログ（履歴は data/viaduct.json に残る）
 data/viaduct.log
+# 描画用の中間データ（engine/*.py で再生成できる）
+data/plan/meta.json

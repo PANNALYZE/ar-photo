@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { createStage, groundGrid, boxEdges, boxMesh, COLORS } from '../lib/stage.js';
 import { IsoMesher } from '../lib/isosurface.js';
-import { chapter, subtitles, panel, tag } from '../lib/hud.js';
+import { chapter, subtitles, panel, tag, prompt } from '../lib/hud.js';
 import { clamp, lerp, seg, ease, easeInOut, fetchJson, fetchBin, el, fmt } from '../lib/util.js';
 
 const T = { setup: 0, evolve: 5.5, verify: 25, beauty: 33, end: 40 };
@@ -181,7 +181,7 @@ export async function create({ canvas, hud }) {
 
   // --- 文字 ---------------------------------------------------------------
   const chap = chapter(hud, '02', '設計', 'GENERATIVE DESIGN × 3D FEM');
-  const worst = Math.min(...meta.stiffness_gain);
+  const ask = prompt(hud, '交差道路の建築限界を守り、同じコンクリート量で最も剛な高架橋を。', 0.8, T.evolve + 3);
   const sub = subtitles(hud, [
     [0.6, 5.2, '与えるのは、<em>条件</em>だけ。'],
     [6.0, 13.5, '形は、<em>力の流れ</em>からAIが導き出す。'],
@@ -258,7 +258,7 @@ export async function create({ canvas, hud }) {
       remesh(f, iso, sv > 0);
 
       // 文字
-      sub(t);
+      sub(t); ask(t);
       chap.style.opacity = 1 - ease(seg(t, T.beauty - 0.8, T.beauty));
       const it = Math.min(Math.floor(f), nframes - 1), r = meta.iters[it];
       const stg = meta.stages[r.stage - 1];
