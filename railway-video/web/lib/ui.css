@@ -64,3 +64,10 @@ html, body { margin: 0; background: #000; overflow: hidden; }
 .legend span::before { content: ""; display: inline-block; width: 18px; height: 4px; margin-right: 7px; vertical-align: 4px; background: var(--c); }
 .tag.big { font-size: 19px; color: var(--ink); }
 .tag.g { color: var(--green); }
+
+/* 現場時刻（上中央） */
+.clock { left: 0; right: 0; top: 54px; text-align: center; }
+.clock .lab { font-size: 15px; letter-spacing: .2em; color: var(--dim); }
+.clock .time { font: 700 76px var(--mono); letter-spacing: .06em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.clock .bar { width: 420px; height: 4px; margin: 6px auto 0; background: rgba(130, 190, 230, .2); }
+.clock .bar i { display: block; height: 100%; background: var(--amber); }
