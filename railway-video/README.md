@@ -3,17 +3,18 @@
 鉄道構造物の計画・設計・施工・維持管理・技術開発の「次の実務」を見せる約3分の動画です。
 画面に出る解析結果は、すべてこのディレクトリのコードが実際に計算したものです（条件は架空）。
 
-完成版は `dist/railway_ai.mp4`（1920×1080・30fps・193秒）です。
+完成版は `dist/railway_ai.mp4`（1920×1080・30fps・216秒）です。
 
 | 章 | 内容 | エンジン | シーン |
 |---|---|---|---|
+| プロローグ | 指示が打ち込まれ、制作が始まる | – | `web/scenes/prologue.js` |
 | 00 導入 | 夜の線路 | – | `web/scenes/opening.js` |
 | 01 計画 | 生成的ルート探索（進化計算＋縦断の動的計画法） | `engine/route.py` | `plan.js` |
 | 02 設計 | 位相最適化 × 3次元FEM によるジェネレーティブデザイン | `engine/fem3d.py` `topopt3d.py` `viaduct.py` | `design.js` |
 | 03 施工 | 夜間桁架設のデジタルリハーサル（離散事象シミュレーション＋モンテカルロ） | `engine/erection.py` | `build.js` |
 | 04 維持管理 | トンネル覆工のひび割れ検出と進行予測 | `engine/tunnel.py` | `tunnel.js` |
 | 05 技術開発 | ベイズ最適化による制振装置の自律探索 | `engine/discovery.py` | `research.js` |
-| 06 結び | – | – | `ending.js` |
+| 06 結び | すべてがコードであることと、その量 | `tools/codestats.py` | `ending.js` |
 
 ## 作り方
 
@@ -30,8 +31,12 @@ python3 engine/discovery.py      # 約2分
 python3 tools/design_post.py     # 最終形状の再解析と描画用データ（約3分）
 
 # 2. BGM と映像
+python3 tools/codestats.py       # 結びに出すコードの行数（web/assets/codestats.json）
 python3 tools/music.py           # out/music.wav
 node render/render_all.mjs       # out/railway_ai.mp4（区間ごとに書き出し、中断しても再開できる）
+
+# プロローグと結びに出す制作者名を変える場合（既定は Claude）
+node render/render_all.mjs --credit "制作者名" --variant named   # out/railway_ai_named.mp4
 ```
 
 1カットだけ確認するとき：

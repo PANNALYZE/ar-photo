@@ -17,9 +17,10 @@
 <body>
 <div id="stage"><canvas id="gl"></canvas><div id="hud"></div><div id="fade"></div></div>
 <script type="module">
-const name = new URLSearchParams(location.search).get('scene') || 'design';
+const params = new URLSearchParams(location.search);
+const name = params.get('scene') || 'design';
 const mod = await import(`/web/scenes/${name}.js`);
-const scene = await mod.create({ canvas: document.getElementById('gl'), hud: document.getElementById('hud') });
+const scene = await mod.create({ canvas: document.getElementById('gl'), hud: document.getElementById('hud'), params });
 window.__duration = scene.duration;
 // 各シーンの頭と終わりは黒から／黒へ（シーン同士をそのまま連結できるようにする）
 const fadeEl = document.getElementById('fade');
@@ -31,7 +32,7 @@ await scene.render(0);
 await document.fonts.ready;
 window.__ready = true;
 // ブラウザで直接開いたときのプレビュー再生（?play=1）
-if (new URLSearchParams(location.search).get('play')) {
+if (params.get('play')) {
   const t0 = performance.now();
   const loop = () => { window.__render(((performance.now() - t0) / 1000) % scene.duration); requestAnimationFrame(loop); };
   loop();

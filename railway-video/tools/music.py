@@ -101,7 +101,7 @@ def main():
     total = sum(s['duration'] for s in tl)
     m = Mix(total + 1.0)
     # 章ごとの音量設計（パッド, ベース, 分散和音, キック, 時計の刻み）
-    level = dict(opening=(0.7, 0.0, 0.0, 0.0, 0.0), plan=(0.8, 0.6, 0.45, 0.0, 0.0), design=(0.9, 0.9, 0.8, 0.7, 0.0),
+    level = dict(prologue=(0.3, 0.0, 0.0, 0.0, 0.0), opening=(0.7, 0.0, 0.0, 0.0, 0.0), plan=(0.8, 0.6, 0.45, 0.0, 0.0), design=(0.9, 0.9, 0.8, 0.7, 0.0),
                  build=(0.7, 0.9, 0.5, 0.8, 0.9), tunnel=(1.0, 0.5, 0.25, 0.0, 0.0), research=(0.9, 1.0, 0.9, 0.8, 0.3),
                  ending=(1.1, 0.9, 0.6, 0.0, 0.0))
     for s in tl:
@@ -139,11 +139,33 @@ def main():
         if t0 > 0:                                  # 章の頭：上昇音 → 低い打音
             m.add(t0 - 3.0, riser(), 0.06, send=0.5)
             m.add(t0, boom(), 0.3, send=0.25)
+    # プロローグ：キーを打つ音、送信、作業ログが流れる音
+    P = next(s for s in tl if s['scene'] == 'prologue')
+    click = lambda f: noise(0.022, f, f * 2.6) * np.exp(-np.arange(int(0.022 * SR)) / SR * 190)   # noqa: E731
+    for i in range(len(P['prompt'])):
+        m.add(P['type_start'] + i / P['cps'] + rng.uniform(-0.008, 0.008), click(rng.uniform(1700, 2600)), rng.uniform(0.07, 0.12),
+              pan=rng.uniform(-0.3, 0.3), send=0.12)
+    m.add(P['enter'], click(700) * 2, 0.22, send=0.3)
+    m.add(P['enter'], boom()[:int(1.6 * SR)], 0.2, send=0.3)
+    for i, row in enumerate(P['log']):
+        n = int(0.09 * SR)
+        blip = np.sin(2 * np.pi * (880 * 2 ** (i / 12)) * np.arange(n) / SR) * env(n, 0.003, 0.07)
+        m.add(row[0], blip, 0.05, pan=0.4 * (-1) ** i, send=0.4)
+    m.add(P['render_at'], riser(P['duration'] - P['render_at']), 0.07, send=0.5)
     # 導入：列車が通過する風切り音
     w = noise(9.0, 80, 2600)
     k = np.linspace(0, 1, len(w))
-    m.add(2.5, w * np.exp(-((k - 0.72) / 0.16) ** 2), 0.3, send=0.3)
-    m.add(0.0, boom(), 0.3, send=0.3)
+    m.add(starts['opening'] + 2.5, w * np.exp(-((k - 0.72) / 0.16) ** 2), 0.3, send=0.3)
+    # 結び：コードの行数が積み上がる音と、節目の打音
+    E = next(s for s in tl if s['scene'] == 'ending')
+    te = starts['ending']
+    for i in range(46):
+        tt = E['code_at'] + 0.3 + 2.7 * (i / 46) ** 0.6
+        n = int(0.05 * SR)
+        m.add(te + tt, np.sin(2 * np.pi * (520 + 26 * i) * np.arange(n) / SR) * env(n, 0.002, 0.04), 0.035, pan=0.5 * np.sin(i), send=0.3)
+    for key, g in (('code_at', 0.3), ('credit_at', 0.36)):
+        m.add(te + E[key] - 2.2, riser(2.2), 0.05, send=0.5)
+        m.add(te + E[key], boom(), g, send=0.3)
     # 結び：最後の和音を伸ばす
     for i, note in enumerate([53, 60, 65, 69, 72, 77]):
         m.add(total - 7.5, pad(hz(note), 8.2), 0.12, pan=(i - 2.5) / 3, send=0.7)

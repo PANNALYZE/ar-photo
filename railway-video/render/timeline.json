@@ -1,9 +1,26 @@
 [
+  { "scene": "prologue", "duration": 12,
+    "prompt": "君の最強の実力を見せつける動画を作ってくれ。\n題材は鉄道構造物。計画、設計、施工、維持管理、技術開発。\nドラマチックに頼む。",
+    "type_start": 1.0, "cps": 17, "enter": 5.3,
+    "reply": "了解しました。素材は使いません。すべて、コードで作ります。", "reply_at": 5.9,
+    "log": [
+      [6.90, "Write",  "engine/fem3d.py",  "3次元FEMソルバを実装"],
+      [7.35, "Run",    "test_fem3d.py",    "理論解と一致"],
+      [7.75, "Run",    "位相最適化",        "144,000 要素 / 459,651 自由度"],
+      [8.10, "Run",    "ルート探索",        "線形案 17,760 案"],
+      [8.40, "Run",    "架設リハーサル",    "8,640 通り × 乱数試行 53,000 回"],
+      [8.65, "Run",    "覆工の変状検出",    "ひび割れ 42 / 46 本"],
+      [8.88, "Run",    "自律実験",          "48 回で古典解を再発見"],
+      [9.08, "Write",  "tools/music.py",   "BGM を合成"],
+      [9.26, "Write",  "web/scenes/*.js",  "8 シーン"],
+      [9.42, "Render", "{frames} フレーム", "1920×1080 / 30fps"]
+    ],
+    "render_at": 9.7 },
   { "scene": "opening",  "duration": 14 },
   { "scene": "plan",     "duration": 31 },
   { "scene": "design",   "duration": 40 },
   { "scene": "build",    "duration": 31 },
   { "scene": "tunnel",   "duration": 31 },
   { "scene": "research", "duration": 30 },
-  { "scene": "ending",   "duration": 16 }
+  { "scene": "ending",   "duration": 27, "code_at": 8.6, "judge_at": 18.2, "credit_at": 22.4 }
 ]

@@ -1,0 +1,23 @@
+{
+ "total": 3829,
+ "files": 30,
+ "by_lang": {
+  "Python": 1649,
+  "JavaScript": 1996,
+  "CSS / HTML": 184
+ },
+ "wall": [
+  "engine/fem3d.py",
+  "engine/topopt3d.py",
+  "web/scenes/design.js",
+  "engine/route.py",
+  "web/lib/isosurface.js",
+  "engine/erection.py",
+  "engine/tunnel.py",
+  "engine/discovery.py",
+  "tools/music.py",
+  "web/scenes/plan.js"
+ ],
+ "started": "2026-11-11T23:01:38Z",
+ "elapsed_min": 197
+}
